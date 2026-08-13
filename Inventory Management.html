@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>庫存盤存台帳</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --paper:#FAF8F3;
+  --panel:#FFFFFF;
+  --ink:#22251F;
+  --ink-soft:#5B5B4F;
+  --line:#DEDACB;
+  --line-strong:#B9B29B;
+  --in:#1F6F5C;
+  --in-bg:#E7F1EC;
+  --out:#A6432B;
+  --out-bg:#F5E9E3;
+  --accent:#3D4B3D;
+  --tag-bg:#EFEBDD;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+  font-size:14px;
+  line-height:1.5;
+}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 24px 60px;}
+
+.masthead{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  border-bottom:3px solid var(--ink);
+  padding-bottom:16px;margin-bottom:22px;
+  flex-wrap:wrap;gap:16px;
+}
+.masthead h1{
+  font-family:'Oswald',sans-serif;
+  font-weight:700;
+  font-size:34px;
+  letter-spacing:0.5px;
+  margin:0;
+  text-transform:uppercase;
+}
+.masthead .sub{
+  font-size:12.5px;color:var(--ink-soft);margin-top:4px;
+  letter-spacing:0.3px;
+}
+.stat-row{display:flex;gap:22px;}
+.stat{text-align:right;}
+.stat .num{font-family:'Oswald',sans-serif;font-size:26px;font-weight:600;line-height:1;}
+.stat .label{font-size:11px;color:var(--ink-soft);letter-spacing:0.5px;margin-top:3px;}
+
+.grid{display:grid;grid-template-columns:300px 1fr;gap:20px;}
+@media (max-width:820px){.grid{grid-template-columns:1fr;}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;}
+.panel-head{
+  padding:12px 16px;border-bottom:1px solid var(--line);
+  font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;
+  letter-spacing:0.8px;text-transform:uppercase;color:var(--accent);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+}
+.link-btn{
+  background:none;border:none;color:var(--accent);cursor:pointer;
+  font-family:'IBM Plex Sans TC',sans-serif;font-size:11.5px;
+  text-decoration:underline;font-weight:500;letter-spacing:0;text-transform:none;
+}
+
+.item-search{
+  width:100%;padding:9px 12px;border:none;border-bottom:1px solid var(--line);
+  font-size:13px;font-family:inherit;background:transparent;outline:none;
+}
+.item-list{max-height:600px;overflow-y:auto;}
+.item-list-colhead{
+  display:flex;justify-content:space-between;padding:6px 16px;
+  font-family:'Oswald',sans-serif;font-size:10.5px;letter-spacing:0.5px;
+  text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);
+  background:#F5F3EA;
+}
+.cat-header{
+  padding:8px 16px 5px;font-family:'Oswald',sans-serif;font-size:11px;
+  letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-soft);
+  background:var(--tag-bg);border-bottom:1px solid var(--line);border-top:1px solid var(--line);
+}
+.item-row{
+  padding:9px 16px;border-bottom:1px solid var(--line);
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.item-row:hover{background:#F5F3EA;}
+.item-row.active{background:var(--accent);color:#fff;}
+.item-row .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.item-row .qty{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;flex-shrink:0;}
+.item-row .qty.neg{color:var(--out);}
+.item-row.active .qty.neg{color:#F3C6B7;}
+.empty-note{padding:20px 16px;color:var(--ink-soft);font-size:12.5px;}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);}
+.tab{
+  padding:12px 18px;cursor:pointer;font-family:'Oswald',sans-serif;
+  font-size:13px;letter-spacing:0.6px;text-transform:uppercase;
+  color:var(--ink-soft);border-bottom:3px solid transparent;font-weight:500;
+}
+.tab.active{color:var(--ink);border-bottom-color:var(--accent);}
+.tab-body{padding:20px;}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:12px;color:var(--ink-soft);letter-spacing:0.3px;}
+.field input,.field select,.field textarea{
+  padding:9px 10px;border:1px solid var(--line-strong);border-radius:2px;
+  font-size:13.5px;font-family:inherit;background:var(--paper);outline:none;
+}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.type-toggle{display:flex;gap:8px;}
+.type-btn{
+  flex:1;padding:10px;text-align:center;border:1.5px solid var(--line-strong);
+  border-radius:2px;cursor:pointer;font-family:'Oswald',sans-serif;
+  font-weight:600;letter-spacing:0.5px;color:var(--ink-soft);
+}
+.type-btn.in.sel{background:var(--in-bg);border-color:var(--in);color:var(--in);}
+.type-btn.out.sel{background:var(--out-bg);border-color:var(--out);color:var(--out);}
+.submit-row{margin-top:16px;display:flex;justify-content:flex-end;gap:10px;align-items:center;}
+.btn{
+  padding:10px 22px;border:none;border-radius:2px;cursor:pointer;
+  font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:0.5px;
+  font-size:13.5px;background:var(--accent);color:#fff;text-transform:uppercase;
+}
+.btn:hover{opacity:0.88;}
+.btn.ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+.btn.sm{padding:7px 14px;font-size:12px;}
+.form-msg{font-size:12px;color:var(--in);}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{
+  text-align:left;padding:9px 10px;border-bottom:2px solid var(--ink);
+  font-family:'Oswald',sans-serif;font-size:11.5px;letter-spacing:0.5px;
+  text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;
+}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr:hover td{background:#FBFAF6;}
+.pill{
+  display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;
+  font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:0.3px;
+}
+.pill.in{background:var(--in-bg);color:var(--in);}
+.pill.out{background:var(--out-bg);color:var(--out);}
+.batch-tag{
+  font-family:'IBM Plex Mono',monospace;background:var(--tag-bg);
+  padding:2px 7px;border-radius:2px;font-size:12px;
+}
+.cat-tag{
+  font-family:'IBM Plex Sans TC',sans-serif;background:#EAE6F2;color:#4B3F63;
+  padding:2px 8px;border-radius:2px;font-size:11.5px;font-weight:500;
+}
+.qty-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.del-btn{
+  background:none;border:none;color:var(--ink-soft);cursor:pointer;
+  font-size:12px;text-decoration:underline;padding:0;
+}
+.del-btn:hover{color:var(--out);}
+.edit-btn{
+  background:none;border:none;color:var(--accent);cursor:pointer;
+  font-size:12px;text-decoration:underline;padding:0;
+}
+.edit-btn:hover{opacity:0.7;}
+.filter-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
+.filter-row select{padding:7px 10px;border:1px solid var(--line-strong);border-radius:2px;font-family:inherit;font-size:12.5px;background:var(--panel);}
+.table-wrap{overflow-x:auto;}
+.loading{padding:40px;text-align:center;color:var(--ink-soft);}
+.toast{
+  position:fixed;bottom:22px;right:22px;background:var(--accent);color:#fff;
+  padding:10px 18px;border-radius:3px;font-size:13px;box-shadow:0 3px 10px rgba(0,0,0,0.2);
+  opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(34,37,31,0.45);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.modal{
+  background:#fff;border-radius:3px;padding:22px;width:340px;
+  box-shadow:0 8px 28px rgba(0,0,0,0.25);
+}
+.modal h3{
+  font-family:'Oswald',sans-serif;font-size:16px;margin:0 0 14px;
+  text-transform:uppercase;letter-spacing:0.4px;
+}
+.modal .field{margin-bottom:12px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading">載入資料中…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TX_KEY = 'inv-transactions';
+const ITEMS_KEY = 'inv-items-master';
+
+/* 這個系統會被下載後部署到 GitHub Pages 等一般網站上，
+   window.storage 只在 Claude 網站的預覽環境裡才能用，
+   部署出去之後要改用瀏覽器原生的 localStorage 才能讓資料真正留下來。 */
+const LocalStore = {
+  async get(key){
+    try{
+      const v = localStorage.getItem(key);
+      return v===null ? null : {key, value:v};
+    }catch(e){ return null; }
+  },
+  async set(key, value){
+    try{
+      localStorage.setItem(key, value);
+      return {key, value};
+    }catch(e){ return null; }
+  }
+};
+
+const DEFAULT_CATEGORY_ORDER = ['冷凍庫存','禾豐冷凍存','冷藏庫存'];
+const OUT_CATEGORIES = ['新廠出貨','回本廠','其他'];
+const HANDLERS = ['阿江','佳萱','小芳','宸瑋'];
+const HANDLER_ROLES = {'小芳':'庫存追蹤人員','宸瑋':'庫存追蹤人員'};
+function handlerLabel(h){ return HANDLER_ROLES[h] ? `${h}（${HANDLER_ROLES[h]}）` : h; }
+const UNITS = ['籃','箱','包'];
+
+const DEFAULT_ITEMS = [
+  {name:'凍豆腐(大)', category:'冷凍庫存', unit:''},
+  {name:'凍豆腐(小)王品', category:'冷凍庫存', unit:''},
+  {name:'大權見凍豆腐 小武', category:'冷凍庫存', unit:''},
+  {name:'豆蔬蛋白捲30條包', category:'冷凍庫存', unit:''},
+  {name:'豆蔬蛋白捲90條包', category:'冷凍庫存', unit:''},
+  {name:'凍豆腐', category:'禾豐冷凍存', unit:''},
+  {name:'黃豆干絲', category:'禾豐冷凍存', unit:''},
+  {name:'小油丁', category:'禾豐冷凍存', unit:''},
+  {name:'百頁切丁', category:'禾豐冷凍存', unit:''},
+  {name:'基改豆腐(白色膜)', category:'冷藏庫存', unit:''},
+  {name:'非基改老豆腐(透明膜)', category:'冷藏庫存', unit:''},
+  {name:'基改豆腐NG(白色膜)', category:'冷藏庫存', unit:''},
+  {name:'非基改老豆腐NG(透明膜)', category:'冷藏庫存', unit:''},
+  {name:'36入調理豆干', category:'冷藏庫存', unit:''},
+  {name:'12入香滷小豆干', category:'冷藏庫存', unit:''},
+  {name:'12入調理豆干', category:'冷藏庫存', unit:''},
+];
+
+let transactions = [];
+let itemsMaster = [];
+let selectedItem = null;
+let activeTab = 'entry';
+let logFilterItem = '';
+let logFilterCategory = '';
+let entryType = 'in';
+let handlerChoice = '';
+let showAddItemModal = false;
+let showManageModal = false;
+let editingTx = null;
+
+const app = document.getElementById('app');
+const toastEl = document.getElementById('toast');
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1800);
+}
+
+async function loadData(){
+  try{
+    const res = await LocalStore.get(TX_KEY);
+    transactions = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){ transactions = []; }
+
+  try{
+    const res2 = await LocalStore.get(ITEMS_KEY);
+    itemsMaster = res2 && res2.value ? JSON.parse(res2.value) : [];
+    if(itemsMaster.length===0){
+      itemsMaster = DEFAULT_ITEMS.slice();
+      await saveItems();
+    }else{
+      const existingNames = new Set(itemsMaster.map(i=>i.name));
+      const missing = DEFAULT_ITEMS.filter(i=>!existingNames.has(i.name));
+      if(missing.length>0){
+        itemsMaster = itemsMaster.concat(missing);
+        await saveItems();
+      }
+    }
+  }catch(e){
+    itemsMaster = DEFAULT_ITEMS.slice();
+    await saveItems();
+  }
+  render();
+}
+
+async function saveData(){
+  try{ await LocalStore.set(TX_KEY, JSON.stringify(transactions)); }
+  catch(e){ showToast('儲存失敗，請重試'); }
+}
+async function saveItems(){
+  try{ await LocalStore.set(ITEMS_KEY, JSON.stringify(itemsMaster)); }
+  catch(e){ showToast('品項儲存失敗，請重試'); }
+}
+
+function categoryOrder(){
+  const cats = [...new Set(itemsMaster.map(i=>i.category))];
+  const ordered = DEFAULT_CATEGORY_ORDER.filter(c=>cats.includes(c));
+  const rest = cats.filter(c=>!DEFAULT_CATEGORY_ORDER.includes(c)).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  return [...ordered, ...rest];
+}
+
+function stockOf(name){
+  return transactions.filter(t=>t.item===name).reduce((s,t)=>s+(t.type==='in'?t.qty:-t.qty),0);
+}
+function unitOfItem(name){
+  const itemTx = transactions.filter(t=>t.item===name && t.unit).slice().sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  return itemTx.length>0 ? itemTx[itemTx.length-1].unit : '';
+}
+function itemsWithStock(){
+  return itemsMaster.map(i=>({...i, stock: stockOf(i.name), unit: i.unit || unitOfItem(i.name)}));
+}
+
+function fmtQty(n){ return (n>0?'+':'') + n; }
+function escapeAttr(s){ return (s==null?'':String(s)).replace(/"/g,'&quot;'); }
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= MAIN RENDER ================= */
+function render(){
+  const items = itemsWithStock();
+  const totalStock = items.reduce((s,i)=>s+i.stock,0);
+  const todayCount = transactions.filter(t=>t.date===todayStr()).length;
+
+  app.innerHTML = `
+    <div class="masthead">
+      <div>
+        <h1>庫存盤存台帳</h1>
+        <div class="sub">品項出入庫即時登打・效期追蹤</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="num mono">${items.length}</div><div class="label">品項數</div></div>
+        <div class="stat"><div class="num mono">${totalStock}</div><div class="label">總庫存件數</div></div>
+        <div class="stat"><div class="num mono">${todayCount}</div><div class="label">今日異動筆數</div></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          品項一覽
+          <span style="display:flex;gap:10px;">
+            <button class="link-btn" id="addItemLink">＋ 新增品項</button>
+            <button class="link-btn" id="manageItemLink">刪除／更改</button>
+          </span>
+        </div>
+        <input class="item-search" id="itemSearch" placeholder="搜尋品項名稱…" value="${escapeAttr(window.__itemSearchVal||'')}">
+        <div class="item-list-colhead">
+          <span>品項</span><span>結餘數量</span>
+        </div>
+        <div class="item-list" id="itemList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs">
+          <div class="tab ${activeTab==='entry'?'active':''}" data-tab="entry">登記異動</div>
+          <div class="tab ${activeTab==='log'?'active':''}" data-tab="log">異動紀錄</div>
+          <div class="tab ${activeTab==='batch'?'active':''}" data-tab="batch">效期明細</div>
+        </div>
+        <div class="tab-body" id="tabBody"></div>
+      </div>
+    </div>
+  `;
+
+  renderItemList(items);
+  document.getElementById('itemSearch').addEventListener('input', e=>{
+    window.__itemSearchVal = e.target.value;
+    renderItemList(items);
+  });
+  document.getElementById('addItemLink').addEventListener('click', ()=>{
+    showAddItemModal = true; renderAddItemModal();
+  });
+  document.getElementById('manageItemLink').addEventListener('click', ()=>{
+    showManageModal = true; renderManageModal();
+  });
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{ activeTab = t.dataset.tab; render(); });
+  });
+
+  if(activeTab==='entry') renderEntryTab();
+  else if(activeTab==='log') renderLogTab();
+  else renderBatchTab();
+
+  renderAddItemModal();
+  renderManageModal();
+  renderEditTxModal();
+}
+
+function renderItemList(items){
+  const q = (window.__itemSearchVal||'').trim().toLowerCase();
+  const filtered = items.filter(i=>i.name.toLowerCase().includes(q));
+  const listEl = document.getElementById('itemList');
+  if(filtered.length===0){
+    listEl.innerHTML = `<div class="empty-note">找不到符合的品項。</div>`;
+    return;
+  }
+  const cats = categoryOrder();
+  let html = '';
+  cats.forEach(cat=>{
+    const group = filtered.filter(i=>i.category===cat);
+    if(group.length===0) return;
+    html += `<div class="cat-header">${escapeHtml(cat)}</div>`;
+    html += group.map(i=>`
+      <div class="item-row ${selectedItem===i.name?'active':''}" data-item="${escapeAttr(i.name)}">
+        <span class="nm">${escapeHtml(i.name)}</span>
+        <span class="qty mono ${i.stock<0?'neg':''}">${fmtQty(i.stock)}${i.unit?' '+escapeHtml(i.unit):''}</span>
+      </div>
+    `).join('');
+  });
+  listEl.innerHTML = html || `<div class="empty-note">找不到符合的品項。</div>`;
+  listEl.querySelectorAll('.item-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      selectedItem = row.dataset.item === selectedItem ? null : row.dataset.item;
+      if(selectedItem) activeTab = 'batch';
+      render();
+    });
+  });
+}
+
+/* ================= ENTRY TAB ================= */
+function renderEntryTab(){
+  const body = document.getElementById('tabBody');
+  const cats = categoryOrder();
+  body.innerHTML = `
+    <div class="type-toggle" style="margin-bottom:16px;">
+      <div class="type-btn in ${entryType==='in'?'sel':''}" data-type="in">＋ 入庫</div>
+      <div class="type-btn out ${entryType==='out'?'sel':''}" data-type="out">－ 出庫</div>
+    </div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>品項名稱</label>
+        <select id="f_item">
+          <option value="">請選擇品項…</option>
+          ${cats.map(cat=>`
+            <optgroup label="${escapeAttr(cat)}">
+              ${itemsMaster.filter(i=>i.category===cat).map(i=>`<option value="${escapeAttr(i.name)}" ${selectedItem===i.name?'selected':''}>${escapeHtml(i.name)}</option>`).join('')}
+            </optgroup>
+          `).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>有效日期</label>
+        <input type="date" id="f_batch">
+      </div>
+      <div class="field">
+        <label>${entryType==='out'?'出庫日期':'入庫日期'}</label>
+        <input type="date" id="f_date" value="${todayStr()}">
+      </div>
+      <div class="field">
+        <label>數量</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="f_qty" min="0" step="1" placeholder="0" style="flex:1;">
+          <select id="f_unit" style="width:82px;flex-shrink:0;">
+            ${UNITS.map(u=>`<option value="${u}">${u}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>不足籃數量（單位：包）</label>
+        <input type="number" id="f_partial" min="0" step="1" placeholder="選填，未滿一籃時填寫">
+      </div>
+      <div class="field">
+        <label>經手人</label>
+        <select id="f_handler_select">
+          <option value="">請選擇…</option>
+          ${HANDLERS.map(h=>`<option value="${escapeAttr(h)}" ${handlerChoice===h?'selected':''}>${escapeHtml(handlerLabel(h))}</option>`).join('')}
+          <option value="其他" ${handlerChoice==='其他'?'selected':''}>其他</option>
+        </select>
+        ${handlerChoice==='其他' ? `<input id="f_handler_other" placeholder="請輸入姓名" style="margin-top:6px;">` : ''}
+      </div>
+      ${entryType==='out' ? `
+      <div class="field">
+        <label>出庫類別</label>
+        <input id="f_outcat" list="outCatList" placeholder="例如 新廠出貨">
+        <datalist id="outCatList">${OUT_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+      </div>` : `<div class="field"></div>`}
+      <div class="field full">
+        <label>備註（選填）</label>
+        <input id="f_note" placeholder="">
+      </div>
+    </div>
+    <div class="submit-row">
+      <span class="form-msg" id="formMsg"></span>
+      <button class="btn" id="submitBtn">儲存這筆異動</button>
+    </div>
+  `;
+
+  body.querySelectorAll('.type-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{ entryType = b.dataset.type; renderEntryTab(); });
+  });
+  document.getElementById('f_handler_select').addEventListener('change', e=>{
+    handlerChoice = e.target.value;
+    renderEntryTab();
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', async ()=>{
+    const item = document.getElementById('f_item').value;
+    const batch = document.getElementById('f_batch').value;
+    const date = document.getElementById('f_date').value;
+    const qty = parseInt(document.getElementById('f_qty').value, 10);
+    const unit = document.getElementById('f_unit').value;
+    const partialRaw = document.getElementById('f_partial').value;
+    const partialQty = partialRaw==='' ? null : parseInt(partialRaw, 10);
+    const handler = handlerChoice==='其他'
+      ? (document.getElementById('f_handler_other')?.value.trim() || '')
+      : handlerChoice;
+    const outCategory = entryType==='out' ? (document.getElementById('f_outcat')?.value.trim() || '') : '';
+    const note = document.getElementById('f_note').value.trim();
+    const msgEl = document.getElementById('formMsg');
+
+    if(!item || !date || !qty || qty<=0){
+      msgEl.style.color = 'var(--out)';
+      msgEl.textContent = `請選擇品項、${entryType==='out'?'出庫日期':'入庫日期'}，並輸入大於 0 的數量`;
+      return;
+    }
+
+    const tx = {
+      id: Date.now()+'-'+Math.random().toString(36).slice(2,7),
+      item, batch, date, type: entryType, qty, unit, partialQty, handler, outCategory, note,
+      createdAt: new Date().toISOString()
+    };
+    transactions.push(tx);
+    await saveData();
+    selectedItem = item;
+    showToast((entryType==='in'?'入庫':'出庫')+'登記成功');
+    render();
+  });
+}
+
+/* ================= LOG TAB ================= */
+function renderLogTab(){
+  const body = document.getElementById('tabBody');
+  const cats = categoryOrder();
+  const rows = transactions
+    .filter(t=> !logFilterItem || t.item===logFilterItem)
+    .filter(t=> !logFilterCategory || (itemsMaster.find(i=>i.name===t.item)||{}).category===logFilterCategory)
+    .slice()
+    .sort((a,b)=> (b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+
+  body.innerHTML = `
+    <div class="filter-row">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="logCatFilter">
+          <option value="">全部庫別</option>
+          ${cats.map(c=>`<option value="${escapeAttr(c)}" ${c===logFilterCategory?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+        </select>
+        <select id="logFilter">
+          <option value="">全部品項</option>
+          ${itemsMaster.filter(i=>!logFilterCategory || i.category===logFilterCategory).map(i=>`<option value="${escapeAttr(i.name)}" ${i.name===logFilterItem?'selected':''}>${escapeHtml(i.name)}</option>`).join('')}
+        </select>
+      </div>
+      <span style="font-size:12px;color:var(--ink-soft);">共 ${rows.length} 筆</span>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>日期</th><th>庫別</th><th>品項</th><th>有效日期</th><th>類型</th><th>數量</th><th>單位</th><th>不足籃(包)</th>
+        <th>經手人</th><th>出庫類別</th><th>備註</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.length===0 ? `<tr><td colspan="12" style="color:var(--ink-soft);padding:24px 10px;">尚無異動紀錄</td></tr>` :
+        rows.map(t=>{
+          const cat = (itemsMaster.find(i=>i.name===t.item)||{}).category || '';
+          return `
+          <tr>
+            <td class="mono">${escapeHtml(t.date)}</td>
+            <td>${cat?`<span class="cat-tag">${escapeHtml(cat)}</span>`:'—'}</td>
+            <td>${escapeHtml(t.item)}</td>
+            <td>${t.batch ? `<span class="batch-tag">${escapeHtml(t.batch)}</span>` : '—'}</td>
+            <td><span class="pill ${t.type}">${t.type==='in'?'入庫':'出庫'}</span></td>
+            <td class="qty-cell" style="color:${t.type==='in'?'var(--in)':'var(--out)'}">${t.type==='in'?'+':'-'}${t.qty}</td>
+            <td class="mono">${escapeHtml(t.unit)||'—'}</td>
+            <td class="mono">${(t.partialQty!==null && t.partialQty!==undefined) ? t.partialQty : '—'}</td>
+            <td>${escapeHtml(t.handler)||'—'}</td>
+            <td>${t.type==='out' ? (escapeHtml(t.outCategory)||'—') : '—'}</td>
+            <td>${escapeHtml(t.note)||'—'}</td>
+            <td style="white-space:nowrap;">
+              <button class="edit-btn" data-id="${t.id}">編輯</button>
+              <button class="del-btn" data-id="${t.id}" style="margin-left:8px;">刪除</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+
+  document.getElementById('logCatFilter').addEventListener('change', e=>{
+    logFilterCategory = e.target.value; logFilterItem=''; renderLogTab();
+  });
+  document.getElementById('logFilter').addEventListener('change', e=>{
+    logFilterItem = e.target.value; renderLogTab();
+  });
+  body.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('確定要刪除這筆異動紀錄嗎？')) return;
+      transactions = transactions.filter(t=>t.id!==btn.dataset.id);
+      await saveData();
+      render();
+    });
+  });
+  body.querySelectorAll('.edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tx = transactions.find(t=>t.id===btn.dataset.id);
+      if(!tx) return;
+      editingTx = {...tx};
+      renderEditTxModal();
+    });
+  });
+}
+
+/* ================= BATCH / EXPIRY TAB ================= */
+function renderBatchTab(){
+  const body = document.getElementById('tabBody');
+  const items = itemsWithStock();
+  const cats = categoryOrder();
+
+  if(!selectedItem){
+    let html = `<div style="margin-bottom:14px;color:var(--ink-soft);font-size:13px;">請從左側「品項一覽」選擇一個品項，查看各有效日期的庫存明細。</div>`;
+    html += `<div class="table-wrap"><table><thead><tr><th>庫別</th><th>品項</th><th>目前庫存</th><th>單位</th></tr></thead><tbody>`;
+    cats.forEach(cat=>{
+      items.filter(i=>i.category===cat).forEach(i=>{
+        html += `<tr data-item="${escapeAttr(i.name)}" style="cursor:pointer;"><td><span class="cat-tag">${escapeHtml(cat)}</span></td><td>${escapeHtml(i.name)}</td><td class="qty-cell mono">${fmtQty(i.stock)}</td><td class="mono">${escapeHtml(i.unit)||'—'}</td></tr>`;
+      });
+    });
+    html += `</tbody></table></div>`;
+    body.innerHTML = html;
+    body.querySelectorAll('tr[data-item]').forEach(row=>{
+      row.addEventListener('click', ()=>{ selectedItem = row.dataset.item; render(); });
+    });
+    return;
+  }
+
+  const itemInfo = itemsMaster.find(i=>i.name===selectedItem) || {};
+  const itemTx = transactions.filter(t=>t.item===selectedItem);
+  const batchMap = {};
+  itemTx.forEach(t=>{
+    const key = t.batch || '（未填效期）';
+    if(!batchMap[key]) batchMap[key] = {in:0,out:0,lastDate:'',outCats:{},units:{}};
+    if(t.type==='in') batchMap[key].in += t.qty; else batchMap[key].out += t.qty;
+    if(t.date > batchMap[key].lastDate) batchMap[key].lastDate = t.date;
+    if(t.type==='out' && t.outCategory) batchMap[key].outCats[t.outCategory]=true;
+    if(t.unit) batchMap[key].units[t.unit]=true;
+  });
+  const batchRows = Object.keys(batchMap).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  const currentStock = itemTx.reduce((s,t)=>s+(t.type==='in'?t.qty:-t.qty),0);
+  const currentUnit = unitOfItem(selectedItem);
+
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;">${escapeHtml(selectedItem)} ${itemInfo.category?`<span class="cat-tag" style="vertical-align:middle;">${escapeHtml(itemInfo.category)}</span>`:''}</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">目前總庫存：<span class="mono" style="font-weight:600;color:${currentStock<0?'var(--out)':'var(--in)'}">${fmtQty(currentStock)}${currentUnit?' '+escapeHtml(currentUnit):''}</span></div>
+      </div>
+      <button class="btn ghost sm" id="clearSelBtn">返回全部品項</button>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>有效日期</th><th>累計入庫</th><th>累計出庫</th><th>結存</th><th>單位</th><th>最後異動日</th><th>出庫類別</th></tr></thead>
+      <tbody>
+        ${batchRows.length===0 ? `<tr><td colspan="7" style="color:var(--ink-soft);padding:20px 10px;">此品項尚無異動紀錄</td></tr>` :
+        batchRows.map(b=>{
+          const d = batchMap[b];
+          const bal = d.in - d.out;
+          return `<tr>
+            <td><span class="batch-tag">${escapeHtml(b)}</span></td>
+            <td class="qty-cell mono" style="color:var(--in)">+${d.in}</td>
+            <td class="qty-cell mono" style="color:var(--out)">-${d.out}</td>
+            <td class="qty-cell mono" style="font-weight:700;">${fmtQty(bal)}</td>
+            <td class="mono">${Object.keys(d.units).join('、')||'—'}</td>
+            <td class="mono">${d.lastDate}</td>
+            <td>${Object.keys(d.outCats).join('、')||'—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+  document.getElementById('clearSelBtn').addEventListener('click', ()=>{
+    selectedItem = null; render();
+  });
+}
+
+/* ================= ADD ITEM MODAL ================= */
+function renderAddItemModal(){
+  let existing = document.getElementById('addItemModalRoot');
+  if(existing) existing.remove();
+  if(!showAddItemModal) return;
+
+  const cats = categoryOrder();
+  const root = document.createElement('div');
+  root.id = 'addItemModalRoot';
+  root.innerHTML = `
+    <div class="modal-backdrop" id="addItemBackdrop">
+      <div class="modal">
+        <h3>新增品項</h3>
+        <div class="field">
+          <label>品項名稱</label>
+          <input id="m_name" placeholder="例如 凍豆腐(中)">
+        </div>
+        <div class="field">
+          <label>所屬庫別</label>
+          <input id="m_cat" list="addItemCatList" placeholder="例如 冷凍庫存" value="${escapeAttr(cats[0]||'')}">
+          <datalist id="addItemCatList">${cats.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+        </div>
+        <div class="field">
+          <label>單位</label>
+          <select id="m_unit">
+            <option value="">未設定</option>
+            ${UNITS.map(u=>`<option value="${u}">${u}</option>`).join('')}
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost sm" id="m_cancel">取消</button>
+          <button class="btn sm" id="m_save">新增</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  document.getElementById('addItemBackdrop').addEventListener('click', e=>{
+    if(e.target.id==='addItemBackdrop'){ showAddItemModal=false; renderAddItemModal(); }
+  });
+  document.getElementById('m_cancel').addEventListener('click', ()=>{ showAddItemModal=false; renderAddItemModal(); });
+  document.getElementById('m_save').addEventListener('click', async ()=>{
+    const name = document.getElementById('m_name').value.trim();
+    const cat = document.getElementById('m_cat').value.trim() || '未分類';
+    const unit = document.getElementById('m_unit').value;
+    if(!name){ return; }
+    if(itemsMaster.some(i=>i.name===name)){
+      showToast('這個品項已經存在');
+      return;
+    }
+    itemsMaster.push({name, category:cat, unit});
+    await saveItems();
+    showAddItemModal = false;
+    selectedItem = name;
+    showToast('已新增品項');
+    render();
+  });
+}
+
+/* ================= MANAGE (EDIT/DELETE) ITEMS MODAL ================= */
+function renderManageModal(){
+  let existing = document.getElementById('manageModalRoot');
+  if(existing) existing.remove();
+  if(!showManageModal) return;
+
+  const cats = categoryOrder();
+  const root = document.createElement('div');
+  root.id = 'manageModalRoot';
+  root.innerHTML = `
+    <div class="modal-backdrop" id="manageModalBackdrop">
+      <div class="modal" style="width:560px;max-width:92vw;max-height:80vh;overflow-y:auto;">
+        <h3>刪除／更改品項</h3>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">改完名稱或庫別後按「儲存」；已存在的異動紀錄品項名稱也會一併更新。</div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>品項名稱</th><th>庫別</th><th>單位</th><th></th></tr></thead>
+          <tbody>
+            ${itemsMaster.map((it,idx)=>`
+              <tr>
+                <td><input class="mgr-name" data-idx="${idx}" value="${escapeAttr(it.name)}" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;"></td>
+                <td><input class="mgr-cat" data-idx="${idx}" value="${escapeAttr(it.category)}" list="mgrCatList" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;"></td>
+                <td>
+                  <select class="mgr-unit" data-idx="${idx}" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;">
+                    <option value="" ${!it.unit?'selected':''}>未設定</option>
+                    ${UNITS.map(u=>`<option value="${u}" ${it.unit===u?'selected':''}>${u}</option>`).join('')}
+                  </select>
+                </td>
+                <td style="white-space:nowrap;">
+                  <button class="link-btn mgr-save" data-idx="${idx}">儲存</button>
+                  <button class="link-btn mgr-del" data-idx="${idx}" style="color:var(--out);margin-left:8px;">刪除</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        </div>
+        <datalist id="mgrCatList">${cats.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+        <div class="modal-actions">
+          <button class="btn ghost sm" id="mgr_close">關閉</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  document.getElementById('manageModalBackdrop').addEventListener('click', e=>{
+    if(e.target.id==='manageModalBackdrop'){ showManageModal=false; renderManageModal(); }
+  });
+  document.getElementById('mgr_close').addEventListener('click', ()=>{
+    showManageModal=false; renderManageModal();
+  });
+
+  root.querySelectorAll('.mgr-save').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = parseInt(btn.dataset.idx, 10);
+      const nameInput = root.querySelector(`.mgr-name[data-idx="${idx}"]`);
+      const catInput = root.querySelector(`.mgr-cat[data-idx="${idx}"]`);
+      const unitInput = root.querySelector(`.mgr-unit[data-idx="${idx}"]`);
+      const newName = nameInput.value.trim();
+      const newCat = catInput.value.trim() || '未分類';
+      const newUnit = unitInput.value;
+      if(!newName){ showToast('品項名稱不能空白'); return; }
+      const oldItem = itemsMaster[idx];
+      if(!oldItem) return;
+      if(newName!==oldItem.name && itemsMaster.some((it,i)=>i!==idx && it.name===newName)){
+        showToast('已有相同名稱的品項');
+        return;
+      }
+      const oldName = oldItem.name;
+      if(newName!==oldName){
+        transactions.forEach(t=>{ if(t.item===oldName) t.item = newName; });
+        await saveData();
+        if(selectedItem===oldName) selectedItem = newName;
+      }
+      itemsMaster[idx] = {name:newName, category:newCat, unit:newUnit};
+      await saveItems();
+      showToast('已更新品項');
+      render();
+    });
+  });
+
+  root.querySelectorAll('.mgr-del').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = parseInt(btn.dataset.idx, 10);
+      const it = itemsMaster[idx];
+      if(!it) return;
+      const txCount = transactions.filter(t=>t.item===it.name).length;
+      const msg = txCount>0
+        ? `「${it.name}」目前有 ${txCount} 筆異動紀錄，刪除品項後這些紀錄仍會保留在異動紀錄裡，但清單中不會再顯示這個品項。確定要刪除嗎？`
+        : `確定要刪除「${it.name}」嗎？`;
+      if(!confirm(msg)) return;
+      itemsMaster.splice(idx,1);
+      await saveItems();
+      if(selectedItem===it.name) selectedItem = null;
+      showToast('已刪除品項');
+      render();
+    });
+  });
+}
+
+/* ================= EDIT TRANSACTION MODAL ================= */
+function captureEditTxForm(){
+  if(!editingTx) return;
+  const get = id => document.getElementById(id);
+  if(get('et_item')) editingTx.item = get('et_item').value;
+  if(get('et_batch')) editingTx.batch = get('et_batch').value;
+  if(get('et_date')) editingTx.date = get('et_date').value;
+  if(get('et_qty')) editingTx.qty = get('et_qty').value;
+  if(get('et_unit')) editingTx.unit = get('et_unit').value;
+  if(get('et_partial')) editingTx.partialQty = get('et_partial').value;
+  if(get('et_handler_select')){
+    const v = get('et_handler_select').value;
+    editingTx._handlerChoice = v;
+    editingTx.handler = v==='其他' ? (get('et_handler_other')?.value || '') : v;
+  }
+  if(get('et_outcat')) editingTx.outCategory = get('et_outcat').value;
+  if(get('et_note')) editingTx.note = get('et_note').value;
+}
+
+function renderEditTxModal(){
+  let existing = document.getElementById('editTxModalRoot');
+  if(existing) existing.remove();
+  if(!editingTx) return;
+
+  const tx = editingTx;
+  const cats = categoryOrder();
+  const isHandlerKnown = HANDLERS.includes(tx.handler);
+  const handlerChoiceVal = tx._handlerChoice!==undefined ? tx._handlerChoice : (tx.handler ? (isHandlerKnown ? tx.handler : '其他') : '');
+
+  const root = document.createElement('div');
+  root.id = 'editTxModalRoot';
+  root.innerHTML = `
+    <div class="modal-backdrop" id="editTxBackdrop">
+      <div class="modal" style="width:480px;max-width:92vw;max-height:85vh;overflow-y:auto;">
+        <h3>編輯異動紀錄</h3>
+        <div class="type-toggle" style="margin-bottom:14px;">
+          <div class="type-btn in ${tx.type==='in'?'sel':''}" id="et_type_in">＋ 入庫</div>
+          <div class="type-btn out ${tx.type==='out'?'sel':''}" id="et_type_out">－ 出庫</div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>品項名稱</label>
+          <select id="et_item">
+            ${cats.map(cat=>`
+              <optgroup label="${escapeAttr(cat)}">
+                ${itemsMaster.filter(i=>i.category===cat).map(i=>`<option value="${escapeAttr(i.name)}" ${tx.item===i.name?'selected':''}>${escapeHtml(i.name)}</option>`).join('')}
+              </optgroup>
+            `).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>有效日期</label>
+          <input type="date" id="et_batch" value="${escapeAttr(tx.batch||'')}">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>${tx.type==='out'?'出庫日期':'入庫日期'}</label>
+          <input type="date" id="et_date" value="${escapeAttr(tx.date||'')}">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>數量</label>
+          <div style="display:flex;gap:6px;">
+            <input type="number" id="et_qty" min="0" step="1" value="${escapeAttr(tx.qty!=null?tx.qty:'')}" style="flex:1;">
+            <select id="et_unit" style="width:82px;flex-shrink:0;">
+              ${UNITS.map(u=>`<option value="${u}" ${tx.unit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>不足籃數量（單位：包）</label>
+          <input type="number" id="et_partial" min="0" step="1" value="${(tx.partialQty!==null && tx.partialQty!==undefined && tx.partialQty!=='')?escapeAttr(tx.partialQty):''}" placeholder="選填">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>經手人</label>
+          <select id="et_handler_select">
+            <option value="">請選擇…</option>
+            ${HANDLERS.map(h=>`<option value="${escapeAttr(h)}" ${handlerChoiceVal===h?'selected':''}>${escapeHtml(handlerLabel(h))}</option>`).join('')}
+            <option value="其他" ${handlerChoiceVal==='其他'?'selected':''}>其他</option>
+          </select>
+          ${handlerChoiceVal==='其他' ? `<input id="et_handler_other" placeholder="請輸入姓名" value="${escapeAttr(tx.handler||'')}" style="margin-top:6px;">` : ''}
+        </div>
+        ${tx.type==='out' ? `
+        <div class="field" style="margin-bottom:12px;">
+          <label>出庫類別</label>
+          <input id="et_outcat" list="etOutCatList" value="${escapeAttr(tx.outCategory||'')}">
+          <datalist id="etOutCatList">${OUT_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+        </div>` : ''}
+        <div class="field" style="margin-bottom:14px;">
+          <label>備註</label>
+          <input id="et_note" value="${escapeAttr(tx.note||'')}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost sm" id="et_cancel">取消</button>
+          <button class="btn sm" id="et_save">儲存修改</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  document.getElementById('editTxBackdrop').addEventListener('click', e=>{
+    if(e.target.id==='editTxBackdrop'){ editingTx=null; renderEditTxModal(); }
+  });
+  document.getElementById('et_cancel').addEventListener('click', ()=>{ editingTx=null; renderEditTxModal(); });
+  document.getElementById('et_type_in').addEventListener('click', ()=>{
+    captureEditTxForm(); editingTx.type='in'; renderEditTxModal();
+  });
+  document.getElementById('et_type_out').addEventListener('click', ()=>{
+    captureEditTxForm(); editingTx.type='out'; renderEditTxModal();
+  });
+  document.getElementById('et_handler_select').addEventListener('change', ()=>{
+    captureEditTxForm(); renderEditTxModal();
+  });
+
+  document.getElementById('et_save').addEventListener('click', async ()=>{
+    captureEditTxForm();
+    const item = editingTx.item;
+    const date = editingTx.date;
+    const qty = parseInt(editingTx.qty, 10);
+    if(!item || !date || !qty || qty<=0){
+      showToast('請確認品項、日期與數量（需大於 0）都已填寫');
+      return;
+    }
+    const idx = transactions.findIndex(t=>t.id===editingTx.id);
+    if(idx===-1){ editingTx=null; renderEditTxModal(); return; }
+    const partialRaw = editingTx.partialQty;
+    const partialQty = (partialRaw===null || partialRaw===undefined || partialRaw==='') ? null : parseInt(partialRaw, 10);
+    transactions[idx] = {
+      ...transactions[idx],
+      item, batch: editingTx.batch||'', date, type: editingTx.type,
+      qty, unit: editingTx.unit, partialQty,
+      handler: editingTx.handler||'',
+      outCategory: editingTx.type==='out' ? (editingTx.outCategory||'') : '',
+      note: editingTx.note||''
+    };
+    await saveData();
+    editingTx = null;
+    showToast('已更新這筆異動紀錄');
+    render();
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
